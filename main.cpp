@@ -2,6 +2,7 @@
 #include <string>
 #include <benchmark/benchmark.h>
 
+const int QUEUE_SIZE = 8192;
 
 #include <log4cplus/logger.h>
 #include <log4cplus/loggingmacros.h>
@@ -30,7 +31,7 @@ log4cplus::Logger GetLog4cplusLogger(bool async, bool file) {
     log4cplus::Logger logger = log4cplus::Logger::getInstance(name);
     logger.removeAllAppenders();
     if (async) {
-        log4cplus::SharedAppenderPtr async_appender(new log4cplus::AsyncAppender(appender, 1000));
+        log4cplus::SharedAppenderPtr async_appender(new log4cplus::AsyncAppender(appender, QUEUE_SIZE));
         logger.addAppender(async_appender);
     }
     else {
@@ -75,7 +76,7 @@ auto BM_log4cplus = [](benchmark::State& state, bool async, bool file) {
 
 std::shared_ptr<spdlog::logger> GetSpdlogLogger(bool asyn, bool file) {
     if (asyn) {
-        spdlog::init_thread_pool(8192, 1);
+        spdlog::init_thread_pool(QUEUE_SIZE, 1);
         if (file) {
             return spdlog::basic_logger_mt<spdlog::async_factory>("file_logger", "spdlog.txt", true);
         }
@@ -170,7 +171,7 @@ std::ostream &operator<<(std::ostream &strm, severity_level level) {
 
 class BoostLoggerInit
 {
-    typedef sinks::asynchronous_sink<sinks::text_ostream_backend> asyn_sink_t;
+    typedef sinks::asynchronous_sink<sinks::text_ostream_backend, sinks::bounded_fifo_queue<QUEUE_SIZE, sinks::block_on_overflow>> asyn_sink_t;
     typedef sinks::synchronous_sink<sinks::text_ostream_backend> sync_sink_t;
 
 public:
